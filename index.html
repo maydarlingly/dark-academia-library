@@ -45,8 +45,11 @@
 
       <footer class="flex justify-center p-4 sm:p-7" data-reveal>
         <p id="hint" class="parchment parchment--slip pointer-events-auto px-6 py-2.5 text-center text-sm italic sm:text-base">
-          <span class="pointer-coarse:hidden">Двигайте мышью, чтобы осмотреться</span>
-          <span class="hidden pointer-coarse:inline">Проведите пальцем, чтобы осмотреться</span>
+          <span data-hint-default>
+            <span class="pointer-coarse:hidden">Наведите на корешок с золотым тиснением и щёлкните, чтобы рассмотреть книгу</span>
+            <span class="hidden pointer-coarse:inline">Коснитесь книги с золотым тиснением</span>
+          </span>
+          <span class="not-italic font-display tracking-[0.08em] text-ink" data-hint-book hidden></span>
         </p>
       </footer>
     </div>
@@ -64,7 +67,7 @@
       <div class="flourish my-4" aria-hidden="true"></div>
       <p class="text-base leading-relaxed text-ink" data-field="description">Описание книги.</p>
       <div class="mt-6 flex flex-wrap gap-3">
-        <button class="btn-wax" type="button" data-action="read">Читать</button>
+        <button class="btn-wax" type="button" data-action="read" disabled title="Читалка появится на следующем этапе">Читать</button>
         <button class="btn-ink" type="button" data-action="shelve">На полку</button>
         <button class="btn-quiet ml-auto" type="button" data-action="close">Вернуть</button>
       </div>

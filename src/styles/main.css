@@ -203,9 +203,15 @@
       transform 0.3s var(--ease-quill);
   }
 
-  .btn-wax:hover {
+  .btn-wax:hover:not(:disabled) {
     filter: brightness(1.15);
     transform: translateY(-1px);
+  }
+
+  .btn-wax:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+    filter: saturate(0.6);
   }
 
   /* Чернильная рамка — второстепенное действие на бумаге */

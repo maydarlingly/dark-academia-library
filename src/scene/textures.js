@@ -17,14 +17,14 @@ export function rng(seed = 1) {
   };
 }
 
-function makeCanvas(width, height = width) {
+export function makeCanvas(width, height = width) {
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
   return { canvas, ctx: canvas.getContext('2d') };
 }
 
-function toTexture(canvas, { repeat = [1, 1], srgb = true } = {}) {
+export function toTexture(canvas, { repeat = [1, 1], srgb = true } = {}) {
   const texture = new THREE.CanvasTexture(canvas);
   if (srgb) texture.colorSpace = THREE.SRGBColorSpace;
   texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
@@ -33,7 +33,7 @@ function toTexture(canvas, { repeat = [1, 1], srgb = true } = {}) {
   return texture;
 }
 
-function addNoise(ctx, width, height, amount, rand) {
+export function addNoise(ctx, width, height, amount, rand) {
   const image = ctx.getImageData(0, 0, width, height);
   const data = image.data;
   for (let i = 0; i < data.length; i += 4) {
@@ -429,4 +429,44 @@ export function createDotTexture() {
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, size, size);
   return toTexture(canvas, { srgb: false });
+}
+
+/** Светлая фактура кожи: умножается на цвет переплёта (material.color / instanceColor). */
+export function createLeatherTexture({ seed = 71 } = {}) {
+  const size = 256;
+  const { canvas, ctx } = makeCanvas(size);
+  const rand = rng(seed);
+  ctx.fillStyle = '#d9d4cc';
+  ctx.fillRect(0, 0, size, size);
+  for (let i = 0; i < 260; i++) {
+    ctx.fillStyle = rand() > 0.5 ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.05)';
+    ctx.beginPath();
+    ctx.ellipse(rand() * size, rand() * size, 2 + rand() * 9, 1 + rand() * 5, rand() * Math.PI, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  addNoise(ctx, size, size, 26, rand);
+  return toTexture(canvas);
+}
+
+/** Обрез книжного блока, вид сверху: тонкие волокна страниц вдоль глубины книги. */
+export function createPagesTexture({ seed = 81 } = {}) {
+  const size = 256;
+  const { canvas, ctx } = makeCanvas(size);
+  const rand = rng(seed);
+  ctx.fillStyle = '#d6c49c';
+  ctx.fillRect(0, 0, size, size);
+  for (let x = 0; x < size; x += 1 + rand() * 2) {
+    ctx.fillStyle = rand() > 0.5 ? `rgba(90, 60, 25, ${0.08 + rand() * 0.14})` : `rgba(255, 245, 220, ${0.1 + rand() * 0.15})`;
+    ctx.fillRect(x, 0, 1, size);
+  }
+  // Пожелтевшие края
+  const edge = ctx.createLinearGradient(0, 0, size, 0);
+  edge.addColorStop(0, 'rgba(110, 70, 25, 0.45)');
+  edge.addColorStop(0.15, 'rgba(110, 70, 25, 0)');
+  edge.addColorStop(0.85, 'rgba(110, 70, 25, 0)');
+  edge.addColorStop(1, 'rgba(110, 70, 25, 0.45)');
+  ctx.fillStyle = edge;
+  ctx.fillRect(0, 0, size, size);
+  addNoise(ctx, size, size, 12, rand);
+  return toTexture(canvas);
 }

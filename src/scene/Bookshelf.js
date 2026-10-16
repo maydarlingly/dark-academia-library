@@ -2,17 +2,15 @@ import * as THREE from 'three';
 import { createPlaqueTexture, createWoodTexture } from './textures.js';
 
 /**
- * Книжный шкаф одного жанра.
- * Начало координат — по центру основания, фасад смотрит в +Z.
+ * Книжный шкаф. Начало координат — по центру основания, фасад смотрит в +Z.
  *
- * `slots` описывает каждую полку — сюда на следующем шаге будут вставать книги:
- *   { index, y, height, width, depth }  — y = верхняя плоскость доски (локально)
+ * `slots` описывает каждую полку (снизу вверх), на них встают книги:
+ *   { index, y, lipY, height, width, depth }  — y = верхняя плоскость доски, lipY = центр кромки
  */
 export class Bookshelf extends THREE.Group {
-  constructor({ genre = { id: 'unknown', title: '' }, width = 3, height = 3.4, depth = 0.46, shelves = 5 } = {}) {
+  constructor({ id = 'main', title = '', width = 3, height = 3.4, depth = 0.46, shelves = 5 } = {}) {
     super();
-    this.name = `bookshelf:${genre.id}`;
-    this.genre = genre;
+    this.name = `bookshelf:${id}`;
     this.width = width;
     this.height = height;
     this.depth = depth;
@@ -69,28 +67,42 @@ export class Bookshelf extends THREE.Group {
       this.slots.push({
         index: i,
         y: y + board,
+        lipY: y + (board + 0.02) / 2,
         height: compartment - board,
         width: innerW - 0.04,
         depth: depth - 0.06,
       });
     }
 
-    // Латунная табличка с названием жанра
-    if (genre.title) {
-      const plaque = new THREE.Mesh(
-        new THREE.PlaneGeometry(0.64, 0.12),
-        new THREE.MeshStandardMaterial({
-          map: createPlaqueTexture(genre.title),
-          metalness: 0.7,
-          roughness: 0.32,
-          emissive: '#2a1a06',
-          emissiveIntensity: 0.4,
-        }),
-      );
+    // Латунная табличка на карнизе
+    if (title) {
+      const plaque = createPlaque(title, 0.64, 0.12);
       plaque.position.set(0, body + 0.07, depth / 2 + 0.022);
       this.add(plaque);
     }
 
     this.add(this.books);
   }
+
+  /** Маленькая табличка на кромке полки — например, название жанра. */
+  addRowLabel(index, text) {
+    const slot = this.slots[index];
+    if (!slot) return;
+    const plaque = createPlaque(text, 0.26, 0.042);
+    plaque.position.set(0, slot.lipY, this.depth / 2 + 0.0015);
+    this.add(plaque);
+  }
+}
+
+function createPlaque(text, width, height) {
+  return new THREE.Mesh(
+    new THREE.PlaneGeometry(width, height),
+    new THREE.MeshStandardMaterial({
+      map: createPlaqueTexture(text),
+      metalness: 0.7,
+      roughness: 0.32,
+      emissive: '#2a1a06',
+      emissiveIntensity: 0.4,
+    }),
+  );
 }

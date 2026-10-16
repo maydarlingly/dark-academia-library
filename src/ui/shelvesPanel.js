@@ -4,7 +4,7 @@ import { storage } from '../store/storage.js';
  * Боковая панель «Мои полки»: книги, отложенные читателем, и сохранённые цитаты.
  * Данные берутся из localStorage (src/store/storage.js), метаданные книг — из каталога.
  */
-export function createShelvesPanel({ root, trigger, catalog }) {
+export function createShelvesPanel({ root, trigger, catalog, onOpenBook }) {
   const books = new Map(catalog.books.map((book) => [book.id, book]));
   const lists = {
     books: root.querySelector('[data-list="books"]'),
@@ -30,12 +30,19 @@ export function createShelvesPanel({ root, trigger, catalog }) {
   function bookItem(bookId) {
     const book = books.get(bookId);
     const item = el('li', 'border-b border-ink/15 pb-3');
-    item.append(
-      el('p', 'font-display text-lg leading-tight text-ink', book?.title ?? bookId),
+    const button = el('button', 'group block w-full text-left');
+    button.type = 'button';
+    button.append(
+      el('p', 'font-display text-lg leading-tight text-ink transition group-hover:text-oxblood', book?.title ?? bookId),
       el('p', 'text-sm italic text-ink-soft', book ? `${book.author}, ${book.year}` : ''),
     );
     const page = storage.getProgress(bookId);
-    if (page > 0) item.append(el('p', 'mt-1 text-xs tracking-wider text-oxblood', `Закладка на стр. ${page + 1}`));
+    if (page > 0) button.append(el('p', 'mt-1 text-xs tracking-wider text-oxblood', `Закладка на стр. ${page + 1}`));
+    button.addEventListener('click', () => {
+      close();
+      onOpenBook?.(bookId);
+    });
+    item.append(button);
     return item;
   }
 
@@ -96,9 +103,11 @@ export function createShelvesPanel({ root, trigger, catalog }) {
   closeButton.addEventListener('click', close);
   tabs.forEach((tab) => tab.addEventListener('click', () => selectTab(tab.dataset.tab)));
   window.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && isOpen) close();
+    if (event.key !== 'Escape' || !isOpen) return;
+    event.preventDefault(); // Esc уже обработан — карточка книги его не тронет
+    close();
   });
   storage.subscribe(() => isOpen && render());
 
-  return { open, close, render };
+  return { open, close, render, isOpen: () => isOpen };
 }

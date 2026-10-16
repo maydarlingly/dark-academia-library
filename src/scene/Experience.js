@@ -8,7 +8,7 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 
 import { Room, ROOM } from './Room.js';
 import { createLighting } from './Lighting.js';
-import { Bookshelf } from './Bookshelf.js';
+import { Library } from './Library.js';
 import { Candelabra } from './Candle.js';
 import { Dust } from './Dust.js';
 
@@ -33,8 +33,10 @@ export class Experience {
     this.canvas = canvas;
     this.catalog = catalog;
     this.updatables = [];
-    this.interactive = []; // сюда будут регистрироваться книги для Raycaster
+    this.events = new EventTarget(); // 'empty-click' — клик мимо интерактивных объектов
+    this.interactive = []; // меши, которые проверяет Raycaster (книги)
     this.hovered = null;
+    this.hoverEnabled = false;
 
     this.timer = new THREE.Timer();
     this.timer.connect(document);
@@ -100,12 +102,10 @@ export class Experience {
 
     this.lights = createLighting(this.scene);
 
-    // Пока один пустой шкаф — первого жанра из каталога
-    const genre = this.catalog?.genres?.[0] ?? { id: 'gothic', title: 'Готический роман' };
-    this.shelf = new Bookshelf({ genre });
-    this.shelf.position.set(0, 0, ROOM.back + this.shelf.depth / 2 + 0.04);
-    this.scene.add(this.shelf);
-    this.shelves = [this.shelf];
+    this.library = new Library({ catalog: this.catalog });
+    this.library.position.set(0, 0, ROOM.back + this.library.depth / 2 + 0.04);
+    this.scene.add(this.library);
+    this.interactive.push(...this.library.interactive);
 
     for (const [x, seed] of [
       [-2.15, 1.3],
@@ -148,19 +148,49 @@ export class Experience {
     this.composer.setSize(width, height);
   };
 
-  #onPointerMove = (event) => {
+  #setPointer(event) {
     this.pointer.set((event.clientX / window.innerWidth) * 2 - 1, -(event.clientY / window.innerHeight) * 2 + 1);
+  }
+
+  #onPointerMove = (event) => {
+    this.#setPointer(event);
+    // Наведение — только мышью и только над холстом (не сквозь карточку или панель)
+    this.hoverEnabled = event.pointerType !== 'touch' && event.target === this.canvas;
   };
 
-  #onClick = () => {
-    this.hovered?.userData.onClick?.(this.hovered);
+  #raycast() {
+    this.raycaster.setFromCamera(this.pointer, this.camera);
+    return this.raycaster.intersectObjects(this.interactive, false)[0]?.object ?? null;
+  }
+
+  /** На сенсорном экране корешок в пару пикселей не поймать — берём ближайшую книгу в радиусе пальца. */
+  #nearestOnScreen(event, radius) {
+    const point = new THREE.Vector3();
+    let best = null;
+    let bestDistance = radius;
+    for (const object of this.interactive) {
+      object.getWorldPosition(point).project(this.camera);
+      const x = ((point.x + 1) / 2) * window.innerWidth;
+      const y = ((1 - point.y) / 2) * window.innerHeight;
+      const distance = Math.hypot(x - event.clientX, y - event.clientY);
+      if (point.z < 1 && distance < bestDistance) [best, bestDistance] = [object, distance];
+    }
+    return best;
+  }
+
+  /** Клик считаем заново по координатам события — так работает и тап на телефоне. */
+  #onClick = (event) => {
+    this.#setPointer(event);
+    const coarse = window.matchMedia('(pointer: coarse)').matches;
+    const hit = this.#raycast() ?? (coarse ? this.#nearestOnScreen(event, 28) : null);
+    if (hit?.userData.onClick) hit.userData.onClick(hit);
+    else this.events.dispatchEvent(new Event('empty-click'));
   };
 
   /** Наведение на интерактивные объекты (книги). Объект сам решает, что делать, через userData. */
   #updateHover() {
     if (!this.interactive.length) return;
-    this.raycaster.setFromCamera(this.pointer, this.camera);
-    const hit = this.raycaster.intersectObjects(this.interactive, false)[0]?.object ?? null;
+    const hit = this.hoverEnabled ? this.#raycast() : null;
     if (hit === this.hovered) return;
     this.hovered?.userData.onPointerLeave?.(this.hovered);
     hit?.userData.onPointerEnter?.(hit);
@@ -205,11 +235,12 @@ export class Experience {
 
   /**
    * Плавный перелёт камеры. Используется для подлёта к книге:
-   *   experience.flyTo({ position: new Vector3(...), target: book.getWorldPosition(new Vector3()) })
+   *   experience.flyTo(experience.library.focusView(bookId, experience.camera))
+   * Новый перелёт перехватывает предыдущий (overwrite: 'auto').
    */
   flyTo({ position, target, duration = 1.6, parallax = 0.15 }) {
     return gsap
-      .timeline({ defaults: { duration, ease: 'power3.inOut' } })
+      .timeline({ defaults: { duration, ease: 'power3.inOut', overwrite: 'auto' } })
       .to(this.rig.position, { x: position.x, y: position.y, z: position.z }, 0)
       .to(this.rig.target, { x: target.x, y: target.y, z: target.z }, 0)
       .to(this.rig, { parallax }, 0);
