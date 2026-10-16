@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bibliotheca Noctis — Полуночная библиотека</title>
+    <meta name="description" content="3D-библиотека в стиле Dark Academia: старинные шкафы, свечи и книги, которые можно читать прямо в браузере." />
+    <meta name="theme-color" content="#0b0806" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Cormorant+SC:wght@500;600&family=Old+Standard+TT:ital,wght@0,400;0,700;1,400&display=swap"
+    />
+  </head>
+
+  <body class="bg-night font-serif text-parchment-100 antialiased">
+    <!-- ═══════════════ 3D-сцена ═══════════════ -->
+    <canvas id="scene" class="scene-canvas fixed inset-0 h-full w-full" aria-label="Зал библиотеки"></canvas>
+    <div class="vignette pointer-events-none fixed inset-0" aria-hidden="true"></div>
+
+    <!-- ═══════════════ 2D-интерфейс поверх сцены ═══════════════ -->
+    <div id="ui" class="pointer-events-none fixed inset-0 z-10 flex flex-col">
+      <header class="flex items-start justify-between gap-4 p-4 sm:p-7">
+        <div class="pointer-events-auto select-none" data-reveal>
+          <p class="font-display text-[0.65rem] tracking-[0.45em] text-gold/80 sm:text-xs">Anno Domini MDCCCXII</p>
+          <h1 class="text-glow font-display text-2xl tracking-[0.1em] text-gold-light sm:text-4xl">Bibliotheca Noctis</h1>
+          <p class="mt-0.5 text-sm italic text-parchment-200/70 sm:text-lg">Полуночная библиотека</p>
+        </div>
+
+        <nav class="pointer-events-auto flex gap-2" data-reveal>
+          <button id="open-shelves" class="btn-gilded" type="button" aria-controls="shelves-panel" aria-expanded="false">
+            <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+              <path d="M4 4h3v16H4zM9 6h3v14H9zM14.5 5.2l2.8-.7 3.4 14.6-2.8.7z" />
+              <path d="M3 20.5h18" />
+            </svg>
+            <span>Мои полки</span>
+          </button>
+        </nav>
+      </header>
+
+      <div class="flex-1"></div>
+
+      <footer class="flex justify-center p-4 sm:p-7" data-reveal>
+        <p id="hint" class="parchment parchment--slip pointer-events-auto px-6 py-2.5 text-center text-sm italic sm:text-base">
+          <span class="pointer-coarse:hidden">Двигайте мышью, чтобы осмотреться</span>
+          <span class="hidden pointer-coarse:inline">Проведите пальцем, чтобы осмотреться</span>
+        </p>
+      </footer>
+    </div>
+
+    <!-- ═══════════════ Карточка книги (после подлёта камеры) ═══════════════ -->
+    <aside
+      id="book-card"
+      class="parchment parchment--torn fixed bottom-6 right-4 z-20 w-[min(26rem,calc(100vw-2rem))] px-8 py-7 sm:right-8 sm:top-1/2 sm:bottom-auto sm:-translate-y-1/2"
+      aria-live="polite"
+      hidden
+    >
+      <p class="font-display text-xs tracking-[0.35em] text-oxblood" data-field="genre">Жанр</p>
+      <h2 class="mt-1 font-display text-3xl leading-tight text-ink" data-field="title">Название</h2>
+      <p class="mt-1 text-lg italic text-ink-soft" data-field="author">Автор</p>
+      <div class="flourish my-4" aria-hidden="true"></div>
+      <p class="text-base leading-relaxed text-ink" data-field="description">Описание книги.</p>
+      <div class="mt-6 flex flex-wrap gap-3">
+        <button class="btn-wax" type="button" data-action="read">Читать</button>
+        <button class="btn-ink" type="button" data-action="shelve">На полку</button>
+        <button class="btn-quiet ml-auto" type="button" data-action="close">Вернуть</button>
+      </div>
+    </aside>
+
+    <!-- ═══════════════ Читалка: разворот старинной книги ═══════════════ -->
+    <section id="reader" class="fixed inset-0 z-30 grid place-items-center p-3 sm:p-8" role="dialog" aria-modal="true" aria-label="Чтение книги" hidden>
+      <div class="book-spread">
+        <article class="book-page book-page--left" data-page="left"></article>
+        <article class="book-page book-page--right" data-page="right"></article>
+      </div>
+      <div class="mt-4 flex items-center gap-4 font-display tracking-[0.15em] text-parchment-200">
+        <button class="btn-gilded" type="button" data-action="prev" aria-label="Предыдущая страница">‹</button>
+        <span data-field="page-counter">1 / 1</span>
+        <button class="btn-gilded" type="button" data-action="next" aria-label="Следующая страница">›</button>
+        <button class="btn-gilded" type="button" data-action="close">Закрыть книгу</button>
+      </div>
+      <button id="save-quote" class="btn-wax fixed z-40 text-sm" type="button" hidden>Сохранить цитату</button>
+    </section>
+
+    <!-- ═══════════════ Личный кабинет «Мои полки» ═══════════════ -->
+    <aside id="shelves-panel" class="drawer fixed top-0 right-0 z-40 h-full w-full max-w-md p-3 sm:p-5" aria-labelledby="shelves-title" aria-hidden="true" inert>
+      <div class="parchment parchment--torn flex h-full flex-col px-7 py-8 sm:px-9">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <p class="font-display text-xs tracking-[0.4em] text-ink-soft">Ex libris</p>
+            <h2 id="shelves-title" class="font-display text-3xl text-ink sm:text-4xl">Мои полки</h2>
+          </div>
+          <button class="btn-quiet text-2xl leading-none" type="button" data-close aria-label="Закрыть">×</button>
+        </div>
+
+        <div class="flourish my-5" aria-hidden="true"></div>
+
+        <div class="flex gap-6 font-display text-sm tracking-[0.14em]" role="tablist">
+          <button class="tab" type="button" role="tab" data-tab="books" aria-selected="true">Книги <span data-count="books">0</span></button>
+          <button class="tab" type="button" role="tab" data-tab="quotes" aria-selected="false">Цитаты <span data-count="quotes">0</span></button>
+        </div>
+
+        <div class="scroll-ink mt-5 -mr-3 flex-1 overflow-y-auto pr-3">
+          <ul class="space-y-3" data-list="books" role="tabpanel"></ul>
+          <ul class="space-y-4" data-list="quotes" role="tabpanel" hidden></ul>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ═══════════════ Экран загрузки ═══════════════ -->
+    <div id="loader" class="fixed inset-0 z-50 grid place-items-center bg-night">
+      <div class="parchment parchment--torn px-12 py-9 text-center">
+        <div class="candle mx-auto mb-5" aria-hidden="true"><span class="candle-flame"></span></div>
+        <p class="font-display text-lg tracking-[0.25em] text-ink" data-status>Зажигаем свечи…</p>
+      </div>
+    </div>
+
+    <!-- SVG-фильтры для неровных, «подранных» краёв бумаги -->
+    <svg class="absolute size-0" aria-hidden="true" focusable="false">
+      <filter id="paper-edge" x="-3%" y="-3%" width="106%" height="106%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="4" seed="4" />
+        <feDisplacementMap in="SourceGraphic" scale="7" xChannelSelector="R" yChannelSelector="G" />
+      </filter>
+      <filter id="paper-torn" x="-4%" y="-4%" width="108%" height="108%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="5" seed="11" />
+        <feDisplacementMap in="SourceGraphic" scale="14" xChannelSelector="R" yChannelSelector="G" />
+      </filter>
+    </svg>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

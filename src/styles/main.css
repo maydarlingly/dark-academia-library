@@ -1,0 +1,402 @@
+@import "tailwindcss";
+
+/* ───────────────────────── Палитра и шрифты ───────────────────────── */
+@theme {
+  --color-night: #0b0806;
+  --color-parchment-50: #f7f0df;
+  --color-parchment-100: #efe3c8;
+  --color-parchment-200: #e2cfa5;
+  --color-parchment-300: #cdb27c;
+  --color-parchment-400: #b08d55;
+  --color-ink: #2b1d12;
+  --color-ink-soft: #5a4330;
+  --color-oxblood: #5e1a1c;
+  --color-oxblood-dark: #3a0f11;
+  --color-gold: #b8913f;
+  --color-gold-light: #e2c47a;
+
+  --font-display: "Cormorant SC", "Cormorant Garamond", Georgia, serif;
+  --font-serif: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  --font-book: "Old Standard TT", "Cormorant Garamond", Georgia, serif;
+
+  --ease-quill: cubic-bezier(0.22, 0.8, 0.24, 1);
+}
+
+@layer base {
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    overflow: hidden;
+    overscroll-behavior: none;
+    background: var(--color-night);
+  }
+
+  ::selection {
+    background: rgb(184 145 63 / 0.35);
+    color: inherit;
+  }
+
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+@layer components {
+  /* ─────────────── 3D-холст и всё, что лежит прямо поверх него ─────────────── */
+  .scene-canvas {
+    touch-action: none;
+    transition:
+      filter 0.9s var(--ease-quill),
+      transform 0.9s var(--ease-quill);
+  }
+
+  /* Режим чтения: сцена уходит на задний план */
+  .scene-canvas.is-dimmed {
+    filter: blur(10px) brightness(0.5) saturate(0.8);
+    transform: scale(1.04);
+  }
+
+  .vignette {
+    background: radial-gradient(ellipse at 50% 45%, transparent 42%, rgb(5 3 2 / 0.5) 78%, rgb(5 3 2 / 0.92) 100%);
+  }
+
+  .text-glow {
+    text-shadow:
+      0 0 1.2rem rgb(226 170 80 / 0.35),
+      0 1px 0 rgb(0 0 0 / 0.85);
+  }
+
+  /* ─────────────── Старая бумага ─────────────── */
+  .parchment {
+    position: relative;
+    isolation: isolate;
+    color: var(--color-ink);
+  }
+
+  .parchment::before,
+  .book-page {
+    background-color: #e8d9b5;
+    background-image:
+      radial-gradient(120% 90% at 50% 45%, rgb(255 251 236 / 0.5), transparent 62%),
+      radial-gradient(60% 55% at 100% 100%, rgb(122 70 28 / 0.4), transparent 70%),
+      radial-gradient(55% 50% at 0% 0%, rgb(122 70 28 / 0.32), transparent 70%),
+      radial-gradient(7% 5% at 82% 18%, rgb(130 82 36 / 0.16), transparent),
+      url("../assets/ui/paper-grain.svg");
+    background-size:
+      auto,
+      auto,
+      auto,
+      auto,
+      400px 400px;
+  }
+
+  .parchment::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: 2px;
+    box-shadow:
+      inset 0 0 2.5rem rgb(112 64 24 / 0.5),
+      inset 0 0 0.35rem rgb(80 42 12 / 0.6),
+      0 1.25rem 2.5rem -0.5rem rgb(0 0 0 / 0.75);
+    filter: url(#paper-edge);
+  }
+
+  /* Сильнее подранные края — для крупных листов */
+  .parchment--torn::before {
+    filter: url(#paper-torn);
+  }
+
+  /* Узкая бумажная полоска-подсказка */
+  .parchment--slip {
+    color: var(--color-ink-soft);
+  }
+
+  .flourish {
+    position: relative;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgb(43 29 18 / 0.45) 22%,
+      rgb(43 29 18 / 0.45) calc(50% - 1.1rem),
+      transparent calc(50% - 1.1rem),
+      transparent calc(50% + 1.1rem),
+      rgb(43 29 18 / 0.45) calc(50% + 1.1rem),
+      rgb(43 29 18 / 0.45) 78%,
+      transparent
+    );
+  }
+
+  .flourish::after {
+    content: "❦";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -54%);
+    font-size: 1.05rem;
+    line-height: 1;
+    color: var(--color-oxblood);
+  }
+
+  /* ─────────────── Кнопки ─────────────── */
+
+  /* Тёмная кожа с золотой рамкой — поверх 3D-сцены */
+  .btn-gilded {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    white-space: nowrap;
+    padding: 0.6rem 1.15rem;
+    font-family: var(--font-display);
+    font-size: 0.95rem;
+    letter-spacing: 0.14em;
+    color: var(--color-gold-light);
+    background: linear-gradient(180deg, rgb(52 30 20 / 0.92), rgb(24 14 9 / 0.94));
+    border: 1px solid rgb(184 145 63 / 0.55);
+    border-radius: 2px;
+    box-shadow:
+      inset 0 0 0 3px rgb(24 14 9 / 0.9),
+      inset 0 0 0 4px rgb(184 145 63 / 0.28),
+      0 0.5rem 1.5rem rgb(0 0 0 / 0.55);
+    backdrop-filter: blur(4px);
+    transition:
+      color 0.3s,
+      border-color 0.3s,
+      box-shadow 0.3s,
+      transform 0.3s var(--ease-quill);
+  }
+
+  .btn-gilded:hover {
+    color: #f6e2a8;
+    border-color: rgb(226 196 122 / 0.9);
+    box-shadow:
+      inset 0 0 0 3px rgb(24 14 9 / 0.9),
+      inset 0 0 0 4px rgb(226 196 122 / 0.45),
+      0 0 1.4rem rgb(226 170 80 / 0.28),
+      0 0.5rem 1.5rem rgb(0 0 0 / 0.55);
+    transform: translateY(-1px);
+  }
+
+  /* Сургучная печать — главное действие на бумаге */
+  .btn-wax {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.4rem;
+    font-family: var(--font-display);
+    font-size: 0.95rem;
+    letter-spacing: 0.14em;
+    color: #f6e7c8;
+    background: radial-gradient(120% 140% at 30% 20%, #8c2b2c, var(--color-oxblood) 55%, var(--color-oxblood-dark));
+    border-radius: 2px;
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.12),
+      inset 0 -2px 0 rgb(0 0 0 / 0.3),
+      0 0.4rem 1rem rgb(58 15 17 / 0.45);
+    transition:
+      filter 0.3s,
+      transform 0.3s var(--ease-quill);
+  }
+
+  .btn-wax:hover {
+    filter: brightness(1.15);
+    transform: translateY(-1px);
+  }
+
+  /* Чернильная рамка — второстепенное действие на бумаге */
+  .btn-ink {
+    padding: 0.6rem 1.2rem;
+    font-family: var(--font-display);
+    font-size: 0.95rem;
+    letter-spacing: 0.14em;
+    color: var(--color-ink);
+    border: 1px solid rgb(43 29 18 / 0.55);
+    border-radius: 2px;
+    transition:
+      background-color 0.3s,
+      color 0.3s;
+  }
+
+  .btn-ink:hover {
+    background: rgb(43 29 18 / 0.08);
+  }
+
+  .btn-ink[aria-pressed="true"] {
+    color: var(--color-parchment-100);
+    background: rgb(43 29 18 / 0.88);
+  }
+
+  .btn-quiet {
+    padding: 0.35rem 0.25rem;
+    font-family: var(--font-display);
+    letter-spacing: 0.12em;
+    color: var(--color-ink-soft);
+    transition: color 0.3s;
+  }
+
+  .btn-quiet:hover {
+    color: var(--color-ink);
+  }
+
+  .btn-gilded:focus-visible,
+  .btn-wax:focus-visible,
+  .btn-ink:focus-visible,
+  .btn-quiet:focus-visible,
+  .tab:focus-visible {
+    outline: 1px solid currentColor;
+    outline-offset: 3px;
+  }
+
+  /* ─────────────── «Мои полки» ─────────────── */
+  .drawer {
+    transform: translateX(110%);
+    transition: transform 0.8s var(--ease-quill);
+  }
+
+  .drawer.is-open {
+    transform: translateX(0);
+  }
+
+  .tab {
+    position: relative;
+    padding-bottom: 0.35rem;
+    color: var(--color-ink-soft);
+    transition: color 0.3s;
+  }
+
+  .tab::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 1px;
+    background: currentColor;
+    transform: scaleX(0);
+    transition: transform 0.4s var(--ease-quill);
+  }
+
+  .tab[aria-selected="true"] {
+    color: var(--color-ink);
+  }
+
+  .tab[aria-selected="true"]::after {
+    transform: scaleX(1);
+  }
+
+  .tab span {
+    margin-left: 0.2rem;
+    font-family: var(--font-serif);
+    color: var(--color-oxblood);
+  }
+
+  .scroll-ink {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(43 29 18 / 0.35) transparent;
+  }
+
+  /* ─────────────── Читалка: разворот книги ─────────────── */
+  .book-spread {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    width: min(68rem, 100%);
+    height: min(44rem, calc(100dvh - 7rem));
+    padding: 0.85rem;
+    background: linear-gradient(90deg, #3a0f11, #5e1a1c 47%, #240809 50%, #5e1a1c 53%, #3a0f11);
+    border-radius: 6px;
+    box-shadow:
+      inset 0 0 0 2px rgb(184 145 63 / 0.35),
+      0 2rem 4rem rgb(0 0 0 / 0.75);
+  }
+
+  .book-page {
+    position: relative;
+    overflow: hidden;
+    padding: clamp(1.5rem, 4vw, 3.5rem);
+    font-family: var(--font-book);
+    font-size: clamp(1rem, 0.55rem + 1.1vw, 1.2rem);
+    line-height: 1.7;
+    color: var(--color-ink);
+    hyphens: auto;
+  }
+
+  .book-page--left {
+    border-radius: 4px 0 0 4px;
+    box-shadow: inset -3rem 0 3rem -2.25rem rgb(70 40 15 / 0.6);
+  }
+
+  .book-page--right {
+    border-radius: 0 4px 4px 0;
+    box-shadow: inset 3rem 0 3rem -2.25rem rgb(70 40 15 / 0.6);
+  }
+
+  @media (width < 48rem) {
+    .book-spread {
+      grid-template-columns: 1fr;
+    }
+
+    .book-page--left {
+      display: none;
+    }
+  }
+
+  /* ─────────────── Экран загрузки: свеча ─────────────── */
+  .candle {
+    position: relative;
+    width: 14px;
+    height: 46px;
+  }
+
+  .candle::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    width: 12px;
+    height: 18px;
+    translate: -50% 0;
+    background: linear-gradient(90deg, #c8b690, #f1e6c9 40%, #bba985);
+    border-radius: 2px 2px 1px 1px;
+  }
+
+  .candle-flame {
+    position: absolute;
+    bottom: 19px;
+    left: 50%;
+    width: 12px;
+    height: 25px;
+    translate: -50% 0;
+    border-radius: 50% 50% 50% 50% / 62% 62% 38% 38%;
+    background: radial-gradient(ellipse 50% 60% at 50% 70%, #fffbe6 0%, #ffd27a 30%, #f08a2c 62%, rgb(240 120 40 / 0) 100%);
+    filter: drop-shadow(0 0 8px rgb(255 170 80 / 0.9)) drop-shadow(0 0 22px rgb(255 140 50 / 0.5));
+    transform-origin: 50% 90%;
+    animation: flame 1.7s ease-in-out infinite alternate;
+  }
+
+  @keyframes flame {
+    0% {
+      transform: scale(1, 1) rotate(-1.5deg);
+    }
+    35% {
+      transform: scale(0.93, 1.07) rotate(1.5deg);
+    }
+    70% {
+      transform: scale(1.05, 0.95) rotate(-1deg);
+    }
+    100% {
+      transform: scale(0.97, 1.04) rotate(0.8deg);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .candle-flame {
+      animation: none;
+    }
+  }
+}
