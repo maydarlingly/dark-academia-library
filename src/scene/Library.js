@@ -33,7 +33,7 @@ export class Library extends THREE.Group {
     this.shelfMode = false; // камера у полки: книги каталога слегка светятся
     this.rowGenres = new Map(); // индекс полки → жанр
 
-    this.shelf = new Bookshelf({ title: 'Bibliotheca Noctis' });
+    this.shelf = new Bookshelf({ title: 'The Invisible Library' });
     this.add(this.shelf);
     this.#arrange(catalog);
     this.#collectPickTargets();

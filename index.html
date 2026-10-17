@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Bibliotheca Noctis — Полуночная библиотека</title>
-    <meta name="description" content="3D-библиотека в стиле Dark Academia: старинные шкафы, свечи и книги, которые можно читать прямо в браузере." />
+    <title>The Invisible Library — Полуночная библиотека</title>
+    <meta name="description" content="The Invisible Library — полуночная 3D-библиотека в стиле Dark Academia: старинные шкафы, свечи и книги, которые можно читать прямо в браузере." />
     <meta name="theme-color" content="#0b0806" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 
@@ -26,7 +26,7 @@
       <header class="flex items-start justify-between gap-4 p-4 sm:p-7">
         <div class="pointer-events-auto select-none" data-reveal>
           <p class="font-display text-[0.65rem] tracking-[0.45em] text-gold/80 sm:text-xs">Anno Domini MDCCCXII</p>
-          <h1 class="text-glow font-display text-2xl tracking-[0.1em] text-gold-light sm:text-4xl">Bibliotheca Noctis</h1>
+          <h1 class="text-glow font-display text-2xl tracking-[0.1em] text-gold-light sm:text-4xl">The Invisible Library</h1>
           <p class="mt-0.5 text-sm italic text-parchment-200/70 sm:text-lg">Полуночная библиотека</p>
         </div>
 
@@ -99,6 +99,12 @@
         <button class="btn-ink" type="button" data-action="shelve">На полку</button>
         <button class="btn-quiet ml-auto" type="button" data-action="close">Вернуть</button>
       </div>
+      <label class="mt-5 flex items-center gap-3">
+        <span class="font-display text-xs tracking-[0.25em] text-ink-soft">Список</span>
+        <span class="select-ink flex-1">
+          <select data-field="status" aria-label="Список чтения"></select>
+        </span>
+      </label>
     </aside>
 
     <!-- ═══════════════ Читалка: разворот старинной книги ═══════════════ -->
@@ -161,7 +167,8 @@
         <div class="flourish my-5" aria-hidden="true"></div>
 
         <div class="flex gap-6 font-display text-sm tracking-[0.14em]" role="tablist">
-          <button class="tab" type="button" role="tab" data-tab="books" aria-selected="true">Книги <span data-count="books">0</span></button>
+          <button class="tab" type="button" role="tab" data-tab="books" aria-selected="true">Полка <span data-count="books">0</span></button>
+          <button class="tab" type="button" role="tab" data-tab="lists" aria-selected="false">Списки <span data-count="lists">0</span></button>
           <button class="tab" type="button" role="tab" data-tab="quotes" aria-selected="false">Цитаты <span data-count="quotes">0</span></button>
         </div>
 
@@ -179,9 +186,19 @@
             </div>
             <ul class="mt-6 space-y-3" data-list="books"></ul>
           </section>
+          <section data-panel="lists" role="tabpanel" aria-label="Списки чтения" hidden>
+            <div class="flex flex-wrap gap-2" data-status-filters role="group" aria-label="Какой список показать"></div>
+            <ul class="mt-5 space-y-3" data-list="statuses"></ul>
+          </section>
           <section data-panel="quotes" role="tabpanel" aria-label="Цитаты" hidden>
             <ul class="space-y-4" data-list="quotes"></ul>
           </section>
+        </div>
+
+        <!-- «Удалено · Вернуть» -->
+        <div class="panel-undo" data-undo role="status" hidden>
+          <span class="min-w-0 flex-1 truncate" data-undo-text></span>
+          <button class="btn-ink px-3 py-1.5 text-sm" type="button" data-undo-action>Вернуть</button>
         </div>
       </div>
     </aside>

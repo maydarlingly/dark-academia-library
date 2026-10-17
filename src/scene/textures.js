@@ -323,7 +323,11 @@ export function createPlaqueTexture(text) {
   ctx.lineWidth = 6;
   ctx.strokeRect(14, 14, w - 28, h - 28);
 
-  ctx.font = '600 92px "Cormorant SC", "Cormorant Garamond", Georgia, serif';
+  // Длинная надпись ужимается, чтобы уместиться на табличке
+  const font = (size) => `600 ${size}px "Cormorant SC", "Cormorant Garamond", Georgia, serif`;
+  ctx.font = font(92);
+  const fit = Math.min(92, Math.floor((92 * (w * 0.86)) / ctx.measureText(text).width));
+  ctx.font = font(fit);
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   // Гравировка = светлый блик снизу + тёмная бороздка

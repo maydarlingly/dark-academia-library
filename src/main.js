@@ -54,6 +54,7 @@ async function boot() {
   });
 
   function openReader(book) {
+    if (!storage.getStatus(book.id)) storage.setStatus(book.id, 'reading'); // начали читать — в «Читаю»
     card.hide();
     experience.setDimmed(true);
     reader.open(book);
