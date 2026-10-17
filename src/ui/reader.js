@@ -2,6 +2,7 @@ import gsap from 'gsap';
 import { loadBookText } from '../data/catalog.js';
 import { storage } from '../store/storage.js';
 import { compareAnchors, paginate, renderBlock } from './paginate.js';
+import { curlPage } from './pageCurl.js';
 import { sound } from './sound.js';
 
 const TITLE_ANCHOR = { c: 0, p: -2, w: 0 }; // титульный лист — раньше любой главы
@@ -169,8 +170,8 @@ export function createReader({ root, onClose }) {
   // ─── Переворот страницы ───
   //
   // Настоящие страницы сразу получают новый текст, а поверх них на время анимации кладутся
-  // копии: «лист» (page-flip) с двумя сторонами — старая страница спереди, новая сзади —
-  // поворачивается вокруг корешка, а под местом, куда он ляжет, лежит копия старой страницы.
+  // копии: мягкий изогнутый лист (src/ui/pageCurl.js) — старая страница спереди, новая сзади, —
+  // а под местом, куда он ляжет, лежит копия старой страницы.
 
   const snapshot = (article) => {
     const copy = article.cloneNode(true);
@@ -179,65 +180,58 @@ export function createReader({ root, onClose }) {
     return copy;
   };
 
+  const rectOf = (article) => ({
+    left: article.offsetLeft,
+    top: article.offsetTop,
+    width: article.offsetWidth,
+    height: article.offsetHeight,
+  });
+
   function overlayOver(article, className = '') {
     const box = document.createElement('div');
     box.className = `page-overlay ${className}`;
-    Object.assign(box.style, {
-      left: `${article.offsetLeft}px`,
-      top: `${article.offsetTop}px`,
-      width: `${article.offsetWidth}px`,
-      height: `${article.offsetHeight}px`,
-    });
+    Object.assign(box.style, Object.fromEntries(Object.entries(rectOf(article)).map(([key, value]) => [key, `${value}px`])));
     spread.append(box);
     return box;
   }
 
-  function face(content, back = false) {
-    const el = document.createElement('div');
-    el.className = `page-flip__face${back ? ' page-flip__face--back' : ''}`;
-    const shade = document.createElement('div');
-    shade.className = 'page-flip__shade';
-    el.append(content, shade);
-    return el;
-  }
-
   function animateFlip(direction, before) {
     const forward = direction > 0;
-    const parts = [];
-    const tl = gsap.timeline({ onComplete: () => parts.forEach((part) => part.remove()) });
+    const leftovers = [];
+    let tl;
 
     if (perSpread === 2) {
       const from = forward ? 'right' : 'left';
       const to = forward ? 'left' : 'right';
       const under = overlayOver(sides[to].article);
       under.append(before[to]);
-      const leaf = overlayOver(sides[from].article, `page-flip page-flip--${from}`);
-      leaf.append(face(before[from]), face(snapshot(sides[to].article), true));
-      parts.push(under, leaf);
-      tl.to(leaf, { rotationY: forward ? -180 : 180, duration: 0.85, ease: 'power2.inOut' }).to(
-        leaf.querySelectorAll('.page-flip__shade'),
-        { opacity: 0.4, duration: 0.425, ease: 'sine.in', yoyo: true, repeat: 1 },
-        0,
-      );
+      leftovers.push(under);
+      tl = curlPage({
+        host: spread,
+        rect: rectOf(sides[from].article),
+        front: before[from],
+        back: snapshot(sides[to].article),
+        hinge: forward ? 'left' : 'right',
+        from: 0,
+        to: forward ? -180 : 180,
+        duration: 1.05,
+        strips: 12,
+        castOn: { source: rectOf(sides[from].article), target: rectOf(sides[to].article) },
+      });
     } else {
+      // Телефон: одна страница — лист поднимается и уходит влево / возвращается обратно
       const page = sides.right.article;
+      const rect = rectOf(page);
       if (forward) {
-        const leaf = overlayOver(page, 'page-flip page-flip--right');
-        leaf.append(face(before.right));
-        parts.push(leaf);
-        tl.to(leaf, { rotationY: -100, duration: 0.75, ease: 'power2.in' })
-          .to(leaf.querySelector('.page-flip__shade'), { opacity: 0.3, duration: 0.6, ease: 'sine.in' }, 0)
-          .to(leaf, { autoAlpha: 0, duration: 0.12 }, 0.63); // к этому моменту лист почти ребром
+        tl = curlPage({ host: spread, rect, front: before.right, hinge: 'left', from: 0, to: -112, duration: 0.95, strips: 8, castOn: { source: rect }, fade: 'out' });
       } else {
         const under = overlayOver(page);
         under.append(before.right);
-        const leaf = overlayOver(page, 'page-flip page-flip--right');
-        leaf.append(face(snapshot(page)));
-        parts.push(under, leaf);
-        tl.fromTo(leaf, { rotationY: -100, autoAlpha: 0 }, { rotationY: 0, autoAlpha: 1, duration: 0.75, ease: 'power2.out' })
-          .fromTo(leaf.querySelector('.page-flip__shade'), { opacity: 0.3 }, { opacity: 0, duration: 0.6, ease: 'sine.out' }, 0);
+        leftovers.push(under);
+        tl = curlPage({ host: spread, rect, front: snapshot(page), hinge: 'left', from: -112, to: 0, duration: 0.95, strips: 8, castOn: { source: rect }, fade: 'in' });
       }
     }
+    tl.call(() => leftovers.forEach((el) => el.remove()));
     return tl;
   }
 
@@ -252,7 +246,7 @@ export function createReader({ root, onClose }) {
     saveProgress();
     render();
 
-    sound.play('page');
+    sound.play('page', 0, { direction });
     if (animate) flipTimeline = animateFlip(direction, before);
   }
 

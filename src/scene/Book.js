@@ -246,6 +246,7 @@ export class BookModel extends THREE.Group {
     this.book = book;
     this.name = `book:${book.id}`;
     this.restZ = 0;
+    this.lift = 0; // насколько книга сейчас выдвинута (цель анимации)
 
     const { leather, pages } = sharedBookMaterials();
     const { map, orm } = createSpineTextures(book);
@@ -281,6 +282,7 @@ export class BookModel extends THREE.Group {
 
   /** Плавно выдвинуть книгу на `lift` метров и подсветить корешок. */
   animate({ lift = 0, glow = 0 } = {}) {
+    this.lift = lift;
     gsap.to(this.position, { z: this.restZ + lift, duration: 0.45, ease: 'power3.out', overwrite: 'auto' });
     gsap.to(this.spineMaterial, { emissiveIntensity: glow, duration: 0.4, ease: 'power2.out', overwrite: 'auto' });
   }

@@ -804,42 +804,53 @@
     pointer-events: none;
   }
 
-  .page-overlay > .book-page,
-  .page-flip__face > .book-page {
+  .page-overlay > .book-page {
     position: absolute;
     inset: 0;
   }
 
-  .page-flip {
+  /* Мягкий лист: цепочка вложенных полос, каждая повёрнута относительно соседней */
+  .page-curl {
+    position: absolute;
     z-index: 4;
+    pointer-events: none;
     transform-style: preserve-3d;
   }
 
-  .page-flip--right {
-    transform-origin: left center;
+  .page-curl__strip {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    transform-style: preserve-3d;
   }
 
-  .page-flip--left {
-    transform-origin: right center;
-  }
-
-  .page-flip__face {
+  .page-curl__face {
     position: absolute;
     inset: 0;
+    overflow: hidden;
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
-    box-shadow: 0 0 1.4rem rgb(0 0 0 / 0.25);
   }
 
-  .page-flip__face--back {
+  .page-curl__face--back {
     transform: rotateY(180deg);
   }
 
-  .page-flip__shade {
+  .page-curl__face > .book-page {
+    position: absolute;
+    top: 0;
+    height: 100%;
+  }
+
+  .page-curl__shade {
     position: absolute;
     inset: 0;
-    background: rgb(30 15 5);
-    opacity: 0;
+  }
+
+  .page-curl__cast {
+    position: absolute;
+    z-index: 3;
+    pointer-events: none;
   }
 
   /* Невидимая пробная страница для вёрстки (src/ui/paginate.js) */

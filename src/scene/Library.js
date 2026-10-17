@@ -16,7 +16,8 @@ const bookDepth = (height, slot) => THREE.MathUtils.clamp(height * 0.72, 0.13, s
  * остальное пространство заполняют декоративные тома (InstancedMesh — один draw call на вариант).
  *
  * События (this.events):
- *   'hover' — detail: book | null    (курсор на корешке / ушёл)
+ *   'hover'     — detail: book | null      (курсор на корешке / ушёл)
+ *   'book-move' — detail: { book, out }    (книга выдвигается из ряда / задвигается обратно — для звука)
  *
  * pickTargets — все меши шкафа для Raycaster: у книг userData.kind = 'book', у остального — 'cabinet'.
  */
@@ -320,8 +321,12 @@ export class Library extends THREE.Group {
   }
 
   #refresh(model) {
+    const before = model.lift;
     if (model === this.selected) model.animate({ lift: LIFT.selected, glow: 0.18 });
     else if (model === this.hovered) model.animate({ lift: LIFT.hover, glow: 0.22 });
     else model.animate({ glow: this.shelfMode ? 0.15 : 0 });
+    if (Math.abs(model.lift - before) > 1e-3) {
+      this.events.dispatchEvent(new CustomEvent('book-move', { detail: { book: model.book, out: model.lift > before } }));
+    }
   }
 }

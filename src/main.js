@@ -99,6 +99,9 @@ async function boot() {
     shelfView.enter(row, x, { duration: 1 });
   }
 
+  // Тихое шуршание кожи о дерево, когда книга выдвигается или задвигается
+  library.events.addEventListener('book-move', (event) => sound.play(event.detail.out ? 'bookOut' : 'bookIn'));
+
   library.events.addEventListener('hover', (event) => {
     if (openId) return;
     if (shelfView.isActive()) shelfView.setHovered(event.detail);
