@@ -33,10 +33,16 @@ export class Experience {
     this.canvas = canvas;
     this.catalog = catalog;
     this.updatables = [];
-    this.events = new EventTarget(); // 'empty-click' — клик мимо интерактивных объектов
-    this.interactive = []; // меши, которые проверяет Raycaster (книги)
-    this.hovered = null;
+    // 'scene-click' — detail: { hit, coarse, clientX, clientY }; hit = пересечение с объектом из pickTargets или null
+    this.events = new EventTarget();
+    this.pickTargets = []; // всё, во что можно попасть лучом: книги и сам шкаф
+    this.interactive = []; // книги каталога — для «прощающего» тапа на телефоне
+    this.hovered = null; // ключ наведения (модель книги)
+    this.hoveredObject = null;
     this.hoverEnabled = false;
+    this.onDrag = null; // (phase: 'move' | 'end', { dx, dy, totalX, totalY }) — перетаскивание по сцене
+    this.press = null;
+    this.suppressClick = false;
 
     this.timer = new THREE.Timer();
     this.timer.connect(document);
@@ -106,6 +112,7 @@ export class Experience {
     this.library.position.set(0, 0, ROOM.back + this.library.depth / 2 + 0.04);
     this.scene.add(this.library);
     this.interactive.push(...this.library.interactive);
+    this.pickTargets.push(...this.library.pickTargets);
 
     for (const [x, seed] of [
       [-2.15, 1.3],
@@ -125,6 +132,9 @@ export class Experience {
   #bindEvents() {
     window.addEventListener('resize', this.#onResize);
     window.addEventListener('pointermove', this.#onPointerMove);
+    this.canvas.addEventListener('pointerdown', this.#onPointerDown);
+    this.canvas.addEventListener('pointerup', this.#onPointerUp);
+    this.canvas.addEventListener('pointercancel', this.#onPointerUp);
     this.canvas.addEventListener('click', this.#onClick);
   }
 
@@ -155,16 +165,48 @@ export class Experience {
   #onPointerMove = (event) => {
     this.#setPointer(event);
     // Наведение — только мышью и только над холстом (не сквозь карточку или панель)
-    this.hoverEnabled = event.pointerType !== 'touch' && event.target === this.canvas;
+    this.hoverEnabled = event.pointerType !== 'touch' && event.target === this.canvas && !this.press?.dragging;
+
+    const press = this.press;
+    if (!press || press.id !== event.pointerId) return;
+    const dx = event.clientX - press.lastX;
+    const dy = event.clientY - press.lastY;
+    press.lastX = event.clientX;
+    press.lastY = event.clientY;
+    const totalX = event.clientX - press.x;
+    const totalY = event.clientY - press.y;
+    if (!press.dragging && Math.hypot(totalX, totalY) > 7) press.dragging = true;
+    if (press.dragging) this.onDrag?.('move', { dx, dy, totalX, totalY });
   };
 
+  #onPointerDown = (event) => {
+    if (event.button > 0) return;
+    this.press = { id: event.pointerId, x: event.clientX, y: event.clientY, lastX: event.clientX, lastY: event.clientY, dragging: false };
+    try {
+      this.canvas.setPointerCapture(event.pointerId); // перетаскивание не теряется, если палец ушёл с холста
+    } catch {
+      /* указатель уже отпущен */
+    }
+  };
+
+  #onPointerUp = (event) => {
+    const press = this.press;
+    this.press = null;
+    if (!press?.dragging) return;
+    // Это было перетаскивание, а не клик — следующий click игнорируем
+    this.suppressClick = true;
+    setTimeout(() => (this.suppressClick = false), 0);
+    this.onDrag?.('end', { dx: 0, dy: 0, totalX: event.clientX - press.x, totalY: event.clientY - press.y });
+  };
+
+  /** Первое пересечение луча из-под курсора со шкафом или книгами. */
   #raycast() {
     this.raycaster.setFromCamera(this.pointer, this.camera);
-    return this.raycaster.intersectObjects(this.interactive, false)[0]?.object ?? null;
+    return this.raycaster.intersectObjects(this.pickTargets, false)[0] ?? null;
   }
 
-  /** На сенсорном экране корешок в пару пикселей не поймать — берём ближайшую книгу в радиусе пальца. */
-  #nearestOnScreen(event, radius) {
+  /** На сенсорном экране корешок в пару пикселей не поймать — ближайшая книга в радиусе пальца. */
+  nearestInteractive(clientX, clientY, radius) {
     const point = new THREE.Vector3();
     let best = null;
     let bestDistance = radius;
@@ -172,30 +214,33 @@ export class Experience {
       object.getWorldPosition(point).project(this.camera);
       const x = ((point.x + 1) / 2) * window.innerWidth;
       const y = ((1 - point.y) / 2) * window.innerHeight;
-      const distance = Math.hypot(x - event.clientX, y - event.clientY);
+      const distance = Math.hypot(x - clientX, y - clientY);
       if (point.z < 1 && distance < bestDistance) [best, bestDistance] = [object, distance];
     }
     return best;
   }
 
-  /** Клик считаем заново по координатам события — так работает и тап на телефоне. */
+  /** Клик считаем заново по координатам события — так работает и тап на телефоне. Решает, что делать, внешний код. */
   #onClick = (event) => {
+    if (this.suppressClick) return;
     this.#setPointer(event);
     const coarse = window.matchMedia('(pointer: coarse)').matches;
-    const hit = this.#raycast() ?? (coarse ? this.#nearestOnScreen(event, 28) : null);
-    if (hit?.userData.onClick) hit.userData.onClick(hit);
-    else this.events.dispatchEvent(new Event('empty-click'));
+    const detail = { hit: this.#raycast(), coarse, clientX: event.clientX, clientY: event.clientY };
+    this.events.dispatchEvent(new CustomEvent('scene-click', { detail }));
   };
 
-  /** Наведение на интерактивные объекты (книги). Объект сам решает, что делать, через userData. */
+  /** Наведение: книги реагируют через userData.onPointerEnter/Leave, курсор берётся из userData.cursor. */
   #updateHover() {
-    if (!this.interactive.length) return;
+    if (!this.pickTargets.length) return;
     const hit = this.hoverEnabled ? this.#raycast() : null;
-    if (hit === this.hovered) return;
-    this.hovered?.userData.onPointerLeave?.(this.hovered);
-    hit?.userData.onPointerEnter?.(hit);
-    this.hovered = hit;
-    this.canvas.style.cursor = hit ? 'pointer' : '';
+    const object = hit?.object ?? null;
+    const key = object?.userData.hoverKey ?? null;
+    this.canvas.style.cursor = object?.userData.cursor ?? '';
+    if (key === this.hovered) return;
+    this.hoveredObject?.userData.onPointerLeave?.();
+    object?.userData.onPointerEnter?.();
+    this.hovered = key;
+    this.hoveredObject = key ? object : null;
   }
 
   #updateCamera(dt) {

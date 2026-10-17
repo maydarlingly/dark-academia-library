@@ -5,7 +5,7 @@
  */
 const KEY = 'bibliotheca-noctis:v1';
 
-const emptyState = () => ({ progress: {}, shelf: [], quotes: [] });
+const emptyState = () => ({ progress: {}, shelf: [], quotes: [], settings: {} });
 
 function load() {
   try {
@@ -80,6 +80,15 @@ export const storage = {
   },
   removeQuote(quoteId) {
     state.quotes = state.quotes.filter((q) => q.id !== quoteId);
+    commit();
+  },
+
+  /** Настройки читателя (например, { sound: false }). */
+  getSetting(key, fallback) {
+    return state.settings?.[key] ?? fallback;
+  },
+  setSetting(key, value) {
+    state.settings = { ...state.settings, [key]: value };
     commit();
   },
 

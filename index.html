@@ -31,26 +31,54 @@
         </div>
 
         <nav class="pointer-events-auto flex gap-2" data-reveal>
-          <button id="open-shelves" class="btn-gilded" type="button" aria-controls="shelves-panel" aria-expanded="false">
+          <button class="btn-gilded sound-toggle px-3" type="button" data-sound-toggle aria-pressed="true" aria-label="Выключить звук">
+            <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+              <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" />
+              <path class="sound-on" d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" />
+              <path class="sound-off" d="M16 9.5l5 5M21 9.5l-5 5" />
+            </svg>
+          </button>
+          <button id="open-shelves" class="btn-gilded relative" type="button" aria-controls="shelves-panel" aria-expanded="false">
             <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
               <path d="M4 4h3v16H4zM9 6h3v14H9zM14.5 5.2l2.8-.7 3.4 14.6-2.8.7z" />
               <path d="M3 20.5h18" />
             </svg>
             <span>Мои полки</span>
+            <span class="shelf-badge" data-shelf-badge hidden>0</span>
           </button>
         </nav>
       </header>
 
       <div class="flex-1"></div>
 
-      <footer class="flex justify-center p-4 sm:p-7" data-reveal>
-        <p id="hint" class="parchment parchment--slip pointer-events-auto px-6 py-2.5 text-center text-sm italic sm:text-base">
+      <footer class="grid justify-items-center p-4 sm:p-7" data-reveal>
+        <p id="hint" class="parchment parchment--slip pointer-events-auto col-start-1 row-start-1 self-end px-6 py-2.5 text-center text-sm italic sm:text-base">
           <span data-hint-default>
-            <span class="pointer-coarse:hidden">Наведите на корешок с золотым тиснением и щёлкните, чтобы рассмотреть книгу</span>
-            <span class="hidden pointer-coarse:inline">Коснитесь книги с золотым тиснением</span>
+            <span class="pointer-coarse:hidden">Нажмите на шкаф, чтобы подойти ближе</span>
+            <span class="hidden pointer-coarse:inline">Коснитесь шкафа, чтобы подойти ближе</span>
           </span>
           <span class="not-italic font-display tracking-[0.08em] text-ink" data-hint-book hidden></span>
         </p>
+
+        <!-- Панель «у полки»: другие полки, прокрутка, книги этой полки, возврат в зал -->
+        <div id="shelf-hud" class="shelf-hud parchment parchment--slip pointer-events-auto col-start-1 row-start-1 self-end" role="toolbar" aria-label="Навигация по шкафу" hidden>
+          <div class="flex items-center gap-2 sm:gap-3">
+            <button class="hud-btn" type="button" data-hud="back" aria-label="Вернуться в зал"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg><span class="hidden sm:inline">В зал</span></button>
+            <span class="hud-sep max-sm:hidden" aria-hidden="true"></span>
+            <button class="hud-btn hud-pan" type="button" data-hud="left" aria-label="Сдвинуться левее"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg></button>
+            <div class="min-w-0 flex-1 text-center">
+              <p class="truncate font-display text-sm leading-tight tracking-[0.1em] text-ink sm:text-base" data-hud-label></p>
+              <p class="truncate text-xs italic text-ink-soft sm:text-sm" data-hud-sub></p>
+            </div>
+            <button class="hud-btn hud-pan" type="button" data-hud="right" aria-label="Сдвинуться правее"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg></button>
+            <span class="hud-sep max-sm:hidden" aria-hidden="true"></span>
+            <div class="flex flex-col gap-1">
+              <button class="hud-btn hud-btn--small" type="button" data-hud="up" aria-label="Полка выше"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M5 15l7-7 7 7" /></svg></button>
+              <button class="hud-btn hud-btn--small" type="button" data-hud="down" aria-label="Полка ниже"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M5 9l7 7 7-7" /></svg></button>
+            </div>
+          </div>
+          <div class="hud-books" data-hud-books></div>
+        </div>
       </footer>
     </div>
 
@@ -77,6 +105,15 @@
     <section id="reader" class="reader fixed inset-0 z-30 flex flex-col items-center justify-center gap-4 p-3 sm:gap-5 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="reader-title" hidden>
       <h2 id="reader-title" class="sr-only" data-field="title">Чтение книги</h2>
       <div class="book-spread" data-spread>
+        <!-- Обложка: распахивается при открытии и закрывается при выходе -->
+        <div class="book-cover" data-cover aria-hidden="true">
+          <div class="book-cover__face book-cover__front">
+            <p class="book-cover__author" data-cover-author></p>
+            <p class="book-cover__title" data-cover-title></p>
+            <span class="book-cover__ornament">❦</span>
+          </div>
+          <div class="book-cover__face book-cover__back"></div>
+        </div>
         <article class="book-page book-page--left" data-side="left">
           <header class="running-head" data-head></header>
           <div class="page-body" data-body></div>
@@ -96,6 +133,13 @@
           <span class="reader-progress" aria-hidden="true"><span data-progress></span></span>
         </div>
         <button class="btn-gilded px-4 text-lg" type="button" data-action="next" aria-label="Следующая страница">›</button>
+        <button class="btn-gilded sound-toggle px-3" type="button" data-sound-toggle aria-pressed="true" aria-label="Выключить звук">
+            <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+              <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" />
+              <path class="sound-on" d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" />
+              <path class="sound-off" d="M16 9.5l5 5M21 9.5l-5 5" />
+            </svg>
+        </button>
         <button class="btn-gilded" type="button" data-action="close">Закрыть</button>
       </nav>
 
@@ -122,8 +166,22 @@
         </div>
 
         <div class="scroll-ink mt-5 -mr-3 flex-1 overflow-y-auto pr-3">
-          <ul class="space-y-3" data-list="books" role="tabpanel"></ul>
-          <ul class="space-y-4" data-list="quotes" role="tabpanel" hidden></ul>
+          <section data-panel="books" role="tabpanel" aria-label="Книги на полке">
+            <!-- Живая полка: книги встают на неё, когда вы нажимаете «На полку» -->
+            <div class="home-shelf">
+              <div class="home-shelf__dust" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+              <div class="home-shelf__row" data-shelf-row>
+                <div class="home-shelf__candle candle" aria-hidden="true"><span class="candle-flame"></span></div>
+                <span class="bookend" data-bookend aria-hidden="true"></span>
+              </div>
+              <div class="home-shelf__board" aria-hidden="true"></div>
+              <p class="home-shelf__empty" data-shelf-empty>Полка ждёт первую книгу</p>
+            </div>
+            <ul class="mt-6 space-y-3" data-list="books"></ul>
+          </section>
+          <section data-panel="quotes" role="tabpanel" aria-label="Цитаты" hidden>
+            <ul class="space-y-4" data-list="quotes"></ul>
+          </section>
         </div>
       </div>
     </aside>

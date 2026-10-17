@@ -8,9 +8,9 @@ const formatYear = (year) => (year < 1000 ? `ок. ${year} г. н. э.` : String
 
 /**
  * Карточка книги, которая появляется после подлёта камеры.
- * Кнопки: «Читать» (onRead), «На полку» (localStorage), «Вернуть» (onClose).
+ * Кнопки: «Читать» (onRead), «На полку» (localStorage + onShelved), «Вернуть» (onClose).
  */
-export function createBookCard({ root, onClose, onRead }) {
+export function createBookCard({ root, onClose, onRead, onShelved }) {
   const fields = Object.fromEntries([...root.querySelectorAll('[data-field]')].map((el) => [el.dataset.field, el]));
   const shelveButton = root.querySelector('[data-action="shelve"]');
   const readButton = root.querySelector('[data-action="read"]');
@@ -64,8 +64,9 @@ export function createBookCard({ root, onClose, onRead }) {
 
   shelveButton.addEventListener('click', () => {
     if (!current) return;
-    storage.toggleShelf(current.id);
+    const added = storage.toggleShelf(current.id);
     syncShelveButton();
+    onShelved?.(current, added, shelveButton);
   });
   readButton.addEventListener('click', () => current && onRead?.(current));
   root.querySelector('[data-action="close"]').addEventListener('click', onClose);

@@ -17,7 +17,8 @@ const bookDepth = (height, slot) => THREE.MathUtils.clamp(height * 0.72, 0.13, s
  *
  * События (this.events):
  *   'hover' — detail: book | null    (курсор на корешке / ушёл)
- *   'pick'  — detail: book           (клик по книге)
+ *
+ * pickTargets — все меши шкафа для Raycaster: у книг userData.kind = 'book', у остального — 'cabinet'.
  */
 export class Library extends THREE.Group {
   constructor({ catalog }) {
@@ -28,10 +29,94 @@ export class Library extends THREE.Group {
     this.interactive = [];
     this.hovered = null;
     this.selected = null;
+    this.shelfMode = false; // камера у полки: книги каталога слегка светятся
+    this.rowGenres = new Map(); // индекс полки → жанр
 
     this.shelf = new Bookshelf({ title: 'Bibliotheca Noctis' });
     this.add(this.shelf);
     this.#arrange(catalog);
+    this.#collectPickTargets();
+  }
+
+  #collectPickTargets() {
+    this.pickTargets = [];
+    this.traverse((object) => {
+      if (!object.isMesh) return;
+      let model = null;
+      for (let node = object; node && node !== this; node = node.parent) {
+        if (node instanceof BookModel) {
+          model = node;
+          break;
+        }
+      }
+      // Обрез страниц книги ведёт себя как сама книга
+      if (model) Object.assign(object.userData, model.body.userData);
+      else object.userData.kind = 'cabinet';
+      object.userData.cursor = 'pointer';
+      this.pickTargets.push(object);
+    });
+  }
+
+  /** Номер полки (0 — нижняя), на уровне которой находится точка в мире. */
+  rowAt(point) {
+    const local = this.shelf.worldToLocal(point.clone());
+    const index = this.shelf.slots.findLastIndex((slot) => local.y >= slot.y - 0.06);
+    return THREE.MathUtils.clamp(index, 0, this.shelf.slots.length - 1);
+  }
+
+  get rowCount() {
+    return this.shelf.slots.length;
+  }
+
+  rowLabel(index) {
+    return this.rowGenres.get(index)?.title ?? 'Старинные фолианты';
+  }
+
+  /** Книги каталога на полке, слева направо. */
+  rowBooks(index) {
+    const slot = this.shelf.slots[index];
+    return [...this.models.values()]
+      .filter((model) => Math.abs(model.position.y - slot.y) < 1e-3)
+      .sort((a, b) => a.position.x - b.position.x)
+      .map((model) => model.book);
+  }
+
+  /** Полка и мировая координата X книги — чтобы вернуться к ней после карточки. */
+  bookRow(bookId) {
+    const model = this.models.get(bookId);
+    const index = this.shelf.slots.findIndex((slot) => Math.abs(model.position.y - slot.y) < 1e-3);
+    return { row: Math.max(0, index), x: model.getWorldPosition(new THREE.Vector3()).x };
+  }
+
+  /**
+   * Ракурс «у полки»: камера прямо напротив ряда, книги крупные. На широком экране ряд виден почти
+   * целиком, на узком — кусок, который можно прокручивать (возвращаемые maxPan и viewWidth).
+   */
+  rowView(index, centerX, camera) {
+    const slot = this.shelf.slots[index];
+    const vfov = THREE.MathUtils.degToRad(camera.fov);
+    const hfov = 2 * Math.atan(Math.tan(vfov / 2) * camera.aspect);
+    const viewWidth = THREE.MathUtils.clamp(1.9 * camera.aspect, 0.85, 2.7);
+    const distance = Math.max(viewWidth / 2 / Math.tan(hfov / 2), 0.42 / Math.tan(vfov / 2));
+
+    const overflow = slot.width - viewWidth; // ряд почти влез — прокрутка не нужна
+    const maxPan = overflow > 0.15 ? overflow / 2 + 0.06 : 0;
+    const localX = THREE.MathUtils.clamp(this.shelf.worldToLocal(new THREE.Vector3(centerX, 0, 0)).x, -maxPan, maxPan);
+    const target = this.shelf.localToWorld(new THREE.Vector3(localX, slot.y + 0.17, this.shelf.depth / 2));
+    const position = target.clone().add(new THREE.Vector3(0, 0.06, distance));
+    return { position, target, x: target.x, maxPan, viewWidth };
+  }
+
+  /** Режим полки: книги каталога чуть светятся, чтобы их было видно среди декоративных томов. */
+  setShelfMode(on) {
+    if (this.shelfMode === on) return;
+    this.shelfMode = on;
+    for (const model of this.models.values()) this.#refresh(model);
+  }
+
+  /** Подсветить книгу из интерфейса (например, при наведении на её название в панели полки). */
+  hover(bookId) {
+    this.#setHovered(bookId ? (this.models.get(bookId) ?? null) : null);
   }
 
   get depth() {
@@ -82,6 +167,7 @@ export class Library extends THREE.Group {
       const index = GENRE_ROWS[i];
       if (index === undefined) return console.warn(`Для жанра «${genre.title}» не хватило полки`);
       used.add(index);
+      this.rowGenres.set(index, genre);
       this.shelf.addRowLabel(index, genre.title);
       this.#fillRow(this.shelf.slots[index], byGenre.get(genre.id) ?? [], rand, fillers);
     });
@@ -216,14 +302,16 @@ export class Library extends THREE.Group {
 
   #bind(model) {
     Object.assign(model.body.userData, {
+      kind: 'book',
       model,
+      hoverKey: model,
       onPointerEnter: () => this.#setHovered(model),
       onPointerLeave: () => this.#setHovered(null),
-      onClick: () => this.events.dispatchEvent(new CustomEvent('pick', { detail: model.book })),
     });
   }
 
   #setHovered(model) {
+    if (model === this.hovered) return;
     const previous = this.hovered;
     this.hovered = model;
     if (previous) this.#refresh(previous);
@@ -234,6 +322,6 @@ export class Library extends THREE.Group {
   #refresh(model) {
     if (model === this.selected) model.animate({ lift: LIFT.selected, glow: 0.18 });
     else if (model === this.hovered) model.animate({ lift: LIFT.hover, glow: 0.22 });
-    else model.animate();
+    else model.animate({ glow: this.shelfMode ? 0.15 : 0 });
   }
 }
