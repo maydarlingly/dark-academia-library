@@ -2,6 +2,7 @@ import gsap from 'gsap';
 import { Flip } from 'gsap/Flip';
 import { STATUSES, statusById } from '../data/statuses.js';
 import { storage } from '../store/storage.js';
+import { closeListPicker, createListPicker } from './listPicker.js';
 import { sound } from './sound.js';
 
 gsap.registerPlugin(Flip);
@@ -261,15 +262,15 @@ export function createShelvesPanel({ root, trigger, catalog, onOpenBook }) {
     const row = el('div', 'flex items-start gap-3');
     row.append(bookHeading(bookId));
 
-    const picker = el('span', 'select-ink select-ink--small flex-none');
-    const select = el('select');
-    select.setAttribute('aria-label', `Список для «${titleOf(bookId)}»`);
-    select.append(...STATUSES.map((s) => new Option(s.title, s.id)));
-    select.value = status;
-    select.dataset.status = status;
-    select.addEventListener('change', () => storage.setStatus(bookId, select.value));
-    picker.append(select);
-    row.append(picker);
+    const picker = createListPicker({
+      value: status,
+      label: `Список для «${titleOf(bookId)}»`,
+      allowNone: false, // убрать — отдельной кнопкой, с «Вернуть»
+      size: 'small',
+      onChange: (next) => storage.setStatus(bookId, next),
+    });
+    picker.el.classList.add('flex-none');
+    row.append(picker.el);
 
     const remove = button('btn-quiet mt-1 text-xs', 'Убрать из списка', `Убрать «${titleOf(bookId)}» из списков`);
     remove.addEventListener('click', () => {
@@ -362,6 +363,7 @@ export function createShelvesPanel({ root, trigger, catalog, onOpenBook }) {
     root.setAttribute('aria-hidden', 'true');
     trigger.setAttribute('aria-expanded', 'false');
     trigger.focus({ preventScroll: true });
+    closeListPicker();
     hideUndo();
   }
 
@@ -370,7 +372,7 @@ export function createShelvesPanel({ root, trigger, catalog, onOpenBook }) {
   closeButton.addEventListener('click', close);
   tabs.forEach((tab) => tab.addEventListener('click', () => selectTab(tab.dataset.tab)));
   window.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape' || !isOpen) return;
+    if (event.key !== 'Escape' || !isOpen || event.defaultPrevented) return;
     event.preventDefault(); // Esc уже обработан — карточка книги его не тронет
     close();
   });

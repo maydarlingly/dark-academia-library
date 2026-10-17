@@ -1,6 +1,6 @@
 import gsap from 'gsap';
-import { STATUSES } from '../data/statuses.js';
 import { storage } from '../store/storage.js';
+import { createListPicker } from './listPicker.js';
 
 const isNarrow = () => window.matchMedia('(width < 40rem)').matches;
 
@@ -10,23 +10,21 @@ const formatYear = (year) => (year < 1000 ? `ок. ${year} г. н. э.` : String
 /**
  * Карточка книги, которая появляется после подлёта камеры.
  * Кнопки: «Читать» (onRead), «На полку» (localStorage + onShelved), «Вернуть» (onClose).
- * Список чтения («Читаю», «В планах», «Прочитано»…) — выпадающий список под кнопками.
+ * Список чтения («Читаю», «В планах», «Прочитано»…) — бумажный выпадающий лист под кнопками.
  */
 export function createBookCard({ root, onClose, onRead, onShelved }) {
   const fields = Object.fromEntries([...root.querySelectorAll('[data-field]')].map((el) => [el.dataset.field, el]));
   const shelveButton = root.querySelector('[data-action="shelve"]');
   const readButton = root.querySelector('[data-action="read"]');
-  const statusSelect = root.querySelector('[data-field="status"]');
   let current = null;
 
-  statusSelect.append(
-    new Option('— не в списке —', ''),
-    ...STATUSES.map((status) => new Option(status.title, status.id)),
-  );
+  const picker = createListPicker({
+    onChange: (status) => current && storage.setStatus(current.id, status),
+  });
+  root.querySelector('[data-status-picker]').append(picker.el);
 
   function syncStatus() {
-    statusSelect.value = current ? (storage.getStatus(current.id) ?? '') : '';
-    statusSelect.dataset.status = statusSelect.value;
+    picker.set(current ? storage.getStatus(current.id) : null);
   }
 
   function syncReadButton() {
@@ -60,6 +58,7 @@ export function createBookCard({ root, onClose, onRead, onShelved }) {
   }
 
   function hide() {
+    picker.close();
     current = null;
     if (root.hidden) return;
     const narrow = isNarrow();
@@ -83,9 +82,7 @@ export function createBookCard({ root, onClose, onRead, onShelved }) {
     onShelved?.(current, added, shelveButton);
   });
   readButton.addEventListener('click', () => current && onRead?.(current));
-  statusSelect.addEventListener('change', () => {
-    if (current) storage.setStatus(current.id, statusSelect.value || null);
-  });
+
   root.querySelector('[data-action="close"]').addEventListener('click', onClose);
   storage.subscribe(() => {
     syncShelveButton();

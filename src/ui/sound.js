@@ -10,7 +10,7 @@ import { storage } from '../store/storage.js';
  *   шлепок  — лист ложится на лист: короткий приглушённый удар (flap).
  * Книга на полке: кожа скользит по дереву (slide), задвинутая — тихо упирается в заднюю стенку.
  *
- *   sound.play('page' | 'open' | 'close' | 'shelf' | 'bookOut' | 'bookIn', delay?, { direction }?)
+ *   sound.play('page' | 'open' | 'close' | 'shelf' | 'paper' | 'bookOut' | 'bookIn', delay?, { direction }?)
  * Выключатель хранится в localStorage (settings.sound).
  */
 const VOLUME = 0.42;
@@ -192,6 +192,11 @@ const SOUNDS = {
   shelf(t) {
     thump(t, { freq: 150, gain: 0.26, duration: 0.12 });
     crackle(t, { duration: 0.04, rate: 150, gain: 0.08, highpass: 2400 });
+  },
+  paper(t) {
+    // Лист бумаги разворачивается: короткий хруст и лёгкий шелест
+    crackle(t, { duration: 0.07, rate: 240, gain: 0.14, highpass: 3000 });
+    swish(t + 0.02, { duration: 0.24, from: 3200, to: 1600, gain: 0.07 });
   },
   bookOut(t) {
     slide(t, { duration: 0.24, from: 620, to: 1200, gain: 0.085 });
