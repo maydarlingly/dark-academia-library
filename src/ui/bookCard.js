@@ -8,12 +8,18 @@ const formatYear = (year) => (year < 1000 ? `ок. ${year} г. н. э.` : String
 
 /**
  * Карточка книги, которая появляется после подлёта камеры.
- * Кнопки: «Читать» (читалка — следующий этап), «На полку» (localStorage), «Вернуть» (onClose).
+ * Кнопки: «Читать» (onRead), «На полку» (localStorage), «Вернуть» (onClose).
  */
-export function createBookCard({ root, onClose }) {
+export function createBookCard({ root, onClose, onRead }) {
   const fields = Object.fromEntries([...root.querySelectorAll('[data-field]')].map((el) => [el.dataset.field, el]));
   const shelveButton = root.querySelector('[data-action="shelve"]');
+  const readButton = root.querySelector('[data-action="read"]');
   let current = null;
+
+  function syncReadButton() {
+    const page = current ? storage.getProgress(current.id) : 0;
+    readButton.textContent = page > 0 ? `Продолжить · стр. ${page}` : 'Читать';
+  }
 
   function syncShelveButton() {
     const onShelf = current ? storage.isOnShelf(current.id) : false;
@@ -28,6 +34,7 @@ export function createBookCard({ root, onClose }) {
     fields.author.textContent = `${book.author} · ${formatYear(book.year)}`;
     fields.description.textContent = book.description;
     syncShelveButton();
+    syncReadButton();
 
     root.hidden = false;
     const narrow = isNarrow();
@@ -60,8 +67,12 @@ export function createBookCard({ root, onClose }) {
     storage.toggleShelf(current.id);
     syncShelveButton();
   });
+  readButton.addEventListener('click', () => current && onRead?.(current));
   root.querySelector('[data-action="close"]').addEventListener('click', onClose);
-  storage.subscribe(syncShelveButton);
+  storage.subscribe(() => {
+    syncShelveButton();
+    syncReadButton();
+  });
 
   return { show, hide };
 }

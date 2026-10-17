@@ -256,6 +256,11 @@ export class Experience {
     this.canvas.classList.toggle('is-dimmed', dimmed);
   }
 
+  /** Остановить отрисовку, пока сцену не видно (холст держит последний кадр) — бережём батарею. */
+  setPaused(paused) {
+    this.renderer.setAnimationLoop(paused ? null : this.#tick);
+  }
+
   dispose() {
     this.renderer.setAnimationLoop(null);
     window.removeEventListener('resize', this.#onResize);

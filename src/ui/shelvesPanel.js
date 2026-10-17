@@ -36,8 +36,11 @@ export function createShelvesPanel({ root, trigger, catalog, onOpenBook }) {
       el('p', 'font-display text-lg leading-tight text-ink transition group-hover:text-oxblood', book?.title ?? bookId),
       el('p', 'text-sm italic text-ink-soft', book ? `${book.author}, ${book.year}` : ''),
     );
-    const page = storage.getProgress(bookId);
-    if (page > 0) button.append(el('p', 'mt-1 text-xs tracking-wider text-oxblood', `Закладка на стр. ${page + 1}`));
+    const bookmark = storage.getBookmark(bookId);
+    if (bookmark?.page > 0) {
+      const percent = bookmark.total ? ` · ${Math.round((bookmark.page / bookmark.total) * 100)}%` : '';
+      button.append(el('p', 'mt-1 text-xs tracking-wider text-oxblood', `Закладка на стр. ${bookmark.page}${percent}`));
+    }
     button.addEventListener('click', () => {
       close();
       onOpenBook?.(bookId);
@@ -55,7 +58,7 @@ export function createShelvesPanel({ root, trigger, catalog, onOpenBook }) {
     remove.addEventListener('click', () => storage.removeQuote(quote.id));
     item.append(
       el('blockquote', 'pr-6 font-book text-[0.95rem] leading-relaxed italic text-ink', `«${quote.text}»`),
-      el('p', 'mt-1 text-xs tracking-wider text-ink-soft', `— ${book?.title ?? quote.bookId}, стр. ${quote.page + 1}`),
+      el('p', 'mt-1 text-xs tracking-wider text-ink-soft', `— ${book?.title ?? quote.bookId}, стр. ${quote.page}`),
       remove,
     );
     return item;

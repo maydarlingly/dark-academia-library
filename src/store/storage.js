@@ -38,12 +38,20 @@ window.addEventListener('storage', (event) => {
 const makeId = () => globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
 export const storage = {
-  /** Номер страницы, на которой читатель остановился (0 — начало книги). */
+  /** Номер страницы, на которой читатель остановился (0 — титульный лист, книга не начата). */
   getProgress(bookId) {
     return state.progress[bookId]?.page ?? 0;
   },
-  setProgress(bookId, page) {
-    state.progress[bookId] = { page, updatedAt: Date.now() };
+  /**
+   * Полная закладка: { page, total, anchor, updatedAt }.
+   * anchor = { c, p, w } — глава, абзац и слово, с которых начинается страница.
+   * По нему читалка находит то же место, даже если на другом экране страниц стало больше или меньше.
+   */
+  getBookmark(bookId) {
+    return state.progress[bookId] ?? null;
+  },
+  setProgress(bookId, { page, total, anchor }) {
+    state.progress[bookId] = { page, total, anchor, updatedAt: Date.now() };
     commit();
   },
 

@@ -67,25 +67,40 @@
       <div class="flourish my-4" aria-hidden="true"></div>
       <p class="text-base leading-relaxed text-ink" data-field="description">Описание книги.</p>
       <div class="mt-6 flex flex-wrap gap-3">
-        <button class="btn-wax" type="button" data-action="read" disabled title="Читалка появится на следующем этапе">Читать</button>
+        <button class="btn-wax" type="button" data-action="read">Читать</button>
         <button class="btn-ink" type="button" data-action="shelve">На полку</button>
         <button class="btn-quiet ml-auto" type="button" data-action="close">Вернуть</button>
       </div>
     </aside>
 
     <!-- ═══════════════ Читалка: разворот старинной книги ═══════════════ -->
-    <section id="reader" class="fixed inset-0 z-30 grid place-items-center p-3 sm:p-8" role="dialog" aria-modal="true" aria-label="Чтение книги" hidden>
-      <div class="book-spread">
-        <article class="book-page book-page--left" data-page="left"></article>
-        <article class="book-page book-page--right" data-page="right"></article>
+    <section id="reader" class="reader fixed inset-0 z-30 flex flex-col items-center justify-center gap-4 p-3 sm:gap-5 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="reader-title" hidden>
+      <h2 id="reader-title" class="sr-only" data-field="title">Чтение книги</h2>
+      <div class="book-spread" data-spread>
+        <article class="book-page book-page--left" data-side="left">
+          <header class="running-head" data-head></header>
+          <div class="page-body" data-body></div>
+          <footer class="folio" data-folio></footer>
+        </article>
+        <article class="book-page book-page--right" data-side="right">
+          <header class="running-head" data-head></header>
+          <div class="page-body" data-body></div>
+          <footer class="folio" data-folio></footer>
+        </article>
       </div>
-      <div class="mt-4 flex items-center gap-4 font-display tracking-[0.15em] text-parchment-200">
-        <button class="btn-gilded" type="button" data-action="prev" aria-label="Предыдущая страница">‹</button>
-        <span data-field="page-counter">1 / 1</span>
-        <button class="btn-gilded" type="button" data-action="next" aria-label="Следующая страница">›</button>
-        <button class="btn-gilded" type="button" data-action="close">Закрыть книгу</button>
-      </div>
-      <button id="save-quote" class="btn-wax fixed z-40 text-sm" type="button" hidden>Сохранить цитату</button>
+
+      <nav class="flex w-full max-w-xl items-center justify-center gap-3 sm:gap-4" aria-label="Листание">
+        <button class="btn-gilded px-4 text-lg" type="button" data-action="prev" aria-label="Предыдущая страница">‹</button>
+        <div class="flex min-w-0 flex-1 flex-col items-center gap-2">
+          <span class="font-display text-xs tracking-[0.16em] text-parchment-200/90 sm:text-sm" data-field="counter" aria-live="polite"></span>
+          <span class="reader-progress" aria-hidden="true"><span data-progress></span></span>
+        </div>
+        <button class="btn-gilded px-4 text-lg" type="button" data-action="next" aria-label="Следующая страница">›</button>
+        <button class="btn-gilded" type="button" data-action="close">Закрыть</button>
+      </nav>
+
+      <button id="save-quote" class="btn-wax fixed z-40 text-sm" type="button" hidden>❝ Сохранить цитату</button>
+      <p class="reader-toast parchment parchment--slip px-6 py-2.5 text-center text-sm italic" data-toast role="status" hidden></p>
     </section>
 
     <!-- ═══════════════ Личный кабинет «Мои полки» ═══════════════ -->

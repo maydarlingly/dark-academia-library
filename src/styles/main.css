@@ -307,12 +307,16 @@
   }
 
   /* ─────────────── Читалка: разворот книги ─────────────── */
+  .reader {
+    background: radial-gradient(ellipse at 50% 45%, rgb(12 7 4 / 0.3), rgb(5 3 2 / 0.78));
+  }
+
   .book-spread {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 0;
-    width: min(68rem, 100%);
-    height: min(44rem, calc(100dvh - 7rem));
+    width: min(70rem, 100%);
+    height: min(46rem, calc(100dvh - 6.5rem));
     padding: 0.85rem;
     background: linear-gradient(90deg, #3a0f11, #5e1a1c 47%, #240809 50%, #5e1a1c 53%, #3a0f11);
     border-radius: 6px;
@@ -323,23 +327,235 @@
 
   .book-page {
     position: relative;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
     overflow: hidden;
-    padding: clamp(1.5rem, 4vw, 3.5rem);
+    padding: clamp(1.1rem, 2.6vw, 2.4rem) clamp(1.25rem, 3.6vw, 3.4rem);
     font-family: var(--font-book);
-    font-size: clamp(1rem, 0.55rem + 1.1vw, 1.2rem);
-    line-height: 1.7;
+    font-size: clamp(0.98rem, 0.6rem + 0.85vw, 1.16rem);
+    line-height: 1.62;
     color: var(--color-ink);
     hyphens: auto;
+    overflow-wrap: break-word;
   }
 
   .book-page--left {
+    padding-right: clamp(1.5rem, 4.4vw, 4rem);
     border-radius: 4px 0 0 4px;
     box-shadow: inset -3rem 0 3rem -2.25rem rgb(70 40 15 / 0.6);
   }
 
   .book-page--right {
+    padding-left: clamp(1.5rem, 4.4vw, 4rem);
     border-radius: 0 4px 4px 0;
     box-shadow: inset 3rem 0 3rem -2.25rem rgb(70 40 15 / 0.6);
+  }
+
+  /* Невидимая пробная страница для вёрстки (src/ui/paginate.js) */
+  .book-page--probe {
+    position: fixed;
+    top: 0;
+    left: -10000px;
+    padding: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .running-head,
+  .folio {
+    flex: none;
+    height: 1.6em;
+    overflow: hidden;
+    font-family: var(--font-display);
+    font-size: 0.78em;
+    letter-spacing: 0.18em;
+    line-height: 1.6em;
+    color: var(--color-ink-soft);
+    text-align: center;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    user-select: none;
+  }
+
+  .running-head {
+    margin-bottom: 1em;
+    border-bottom: 1px solid rgb(43 29 18 / 0.16);
+  }
+
+  .running-head:empty {
+    border-color: transparent;
+  }
+
+  .folio {
+    margin-top: 0.7em;
+  }
+
+  .page-body {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .page-body p {
+    margin: 0;
+    text-align: justify;
+    text-indent: 1.6em;
+  }
+
+  .page-body p.cont,
+  .page-body p.first {
+    text-indent: 0;
+  }
+
+  /* Абзац продолжается на следующей странице — последняя строка тоже по ширине */
+  .page-body p.split {
+    text-align-last: justify;
+  }
+
+  .page-body p.first::first-letter {
+    float: left;
+    padding: 0.08em 0.1em 0 0;
+    font-family: var(--font-display);
+    font-size: 3.3em;
+    line-height: 0.8;
+    color: var(--color-oxblood);
+  }
+
+  .page-body p.verse {
+    margin-bottom: 0.9em;
+    padding-left: 1.2em;
+    text-align: left;
+    text-align-last: auto;
+    text-indent: 0;
+    white-space: pre-line;
+    hyphens: manual;
+  }
+
+  .chapter-title {
+    margin: 0.3em 0 1em;
+    font-family: var(--font-display);
+    font-size: 1.22em;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: 0.05em;
+    text-align: center;
+    hyphens: manual;
+  }
+
+  .chapter-title::after {
+    content: "❦";
+    display: block;
+    margin-top: 0.3em;
+    font-size: 0.75em;
+    color: var(--color-oxblood);
+  }
+
+  .title-page {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5em;
+    height: 100%;
+    text-align: center;
+    hyphens: manual;
+  }
+
+  .title-page__author {
+    font-family: var(--font-display);
+    font-size: 1.05em;
+    letter-spacing: 0.2em;
+    color: var(--color-ink-soft);
+  }
+
+  .title-page__title {
+    font-family: var(--font-display);
+    font-size: 2.1em;
+    font-weight: 600;
+    line-height: 1.15;
+  }
+
+  .title-page__ornament {
+    margin: 0.4em 0;
+    font-size: 1.4em;
+    color: var(--color-oxblood);
+  }
+
+  .title-page__note {
+    font-style: italic;
+    color: var(--color-ink-soft);
+  }
+
+  .title-page__source,
+  .book-end a {
+    margin-top: 1.4em;
+    font-size: 0.78em;
+    color: var(--color-ink-soft);
+    text-decoration: underline;
+    text-decoration-color: rgb(43 29 18 / 0.3);
+    text-underline-offset: 0.2em;
+  }
+
+  .book-end {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 1.6em;
+    text-align: center;
+  }
+
+  .book-end__mark {
+    font-family: var(--font-display);
+    letter-spacing: 0.2em;
+    color: var(--color-oxblood);
+  }
+
+  .book-end__mark::before {
+    content: "❦";
+    display: block;
+    margin-bottom: 0.3em;
+  }
+
+  .reader-message {
+    display: grid;
+    height: 100%;
+    place-items: center;
+    padding: 0 1em;
+    font-style: italic;
+    text-align: center;
+    color: var(--color-ink-soft);
+  }
+
+  .reader-progress {
+    display: block;
+    width: min(14rem, 100%);
+    height: 2px;
+    overflow: hidden;
+    background: rgb(226 196 122 / 0.2);
+  }
+
+  .reader-progress span {
+    display: block;
+    height: 100%;
+    width: 0;
+    background: var(--color-gold-light);
+    transition: width 0.5s var(--ease-quill);
+  }
+
+  .reader-toast {
+    position: fixed;
+    bottom: 1.25rem;
+    left: 50%;
+    z-index: 45;
+    translate: -50% 0;
+  }
+
+  .btn-gilded:disabled {
+    cursor: default;
+    opacity: 0.35;
+    transform: none;
   }
 
   @media (width < 48rem) {
@@ -349,6 +565,12 @@
 
     .book-page--left {
       display: none;
+    }
+
+    .book-page--right {
+      padding-left: clamp(1.25rem, 5vw, 2rem);
+      border-radius: 4px;
+      box-shadow: inset 1.5rem 0 2rem -1.5rem rgb(70 40 15 / 0.5);
     }
   }
 
